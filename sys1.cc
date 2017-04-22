@@ -5,9 +5,17 @@
 #include <unistd.h>
 
 class AccessDetail {
+private:
     const static char READ = 'R';
     const static char WRITE = 'W';
+
+    static uint32_t &accessOrder() {
+        static uint32_t accessOrderCounter = 0;
+        return accessOrderCounter;
+    }
+
 public:
+    uint32_t order;
     uint32_t instrAddress;
     uint32_t memAddress;
     uint32_t numOfBytes;
@@ -22,8 +30,11 @@ public:
         sstream >> this->accessType;
         sstream >> std::hex >> this->memAddress;
         sstream >> std::dec >> this->numOfBytes;
+
         this->memRead = (this->accessType == READ);
         this->memWrite = (this->accessType == WRITE);
+        this->order = AccessDetail::accessOrder();
+        AccessDetail::accessOrder()++;
     }
 };
 
