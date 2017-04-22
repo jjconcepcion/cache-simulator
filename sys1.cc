@@ -5,31 +5,31 @@
 #include <unistd.h>
 
 class AccessDetail {
+    const static char READ = 'R';
+    const static char WRITE = 'W';
 public:
     uint32_t instrAddress;
     uint32_t memAddress;
     uint32_t numOfBytes;
+    char accessType;
     bool memRead;
     bool memWrite;
+
+    void parse(const std::string &line) {
+        std::stringstream sstream(line);
+        sstream >> std::hex >> this->instrAddress;
+        sstream.ignore(1, ':');
+        sstream >> this->accessType;
+        sstream >> std::hex >> this->memAddress;
+        sstream >> std::dec >> this->numOfBytes;
+        this->memRead = (this->accessType == READ);
+        this->memWrite = (this->accessType == WRITE);
+    }
 };
 
 void usage(char *baseName) {
     std::cerr << "Usage: " << baseName << " tracefile " << "cachesize ";
     std::cerr << "[-v ic1 ic2]" << std::endl;
-}
-
-void parseLine(const std::string &line, AccessDetail &access) {
-    char accessType;
-
-    std::stringstream sstream(line);
-    sstream >> std::hex >> access.instrAddress;
-    sstream.ignore(1, ':');
-    sstream >> accessType;
-    sstream >> std::hex >> access.memAddress;
-    sstream >> std::dec >> access.numOfBytes;
-
-    access.memRead = (accessType == 'R');
-    access.memWrite = (accessType == 'W');
 }
 
 void simulate(const char *traceFilePath) {
@@ -44,7 +44,7 @@ void simulate(const char *traceFilePath) {
     }
 
     while (std::getline(traceFile, line)) {
-        parseLine(line, access);
+        access.parse(line);
     }
 }
 
