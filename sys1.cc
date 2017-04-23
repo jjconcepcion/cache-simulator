@@ -76,17 +76,17 @@ class Cache {
 private:
     CacheSlot *slots = nullptr;
     CacheStatistics stats;
-    int size;
-    int blockSize;
+    int mSize;
+    int mBlockSize;
     int numBlocks;
 public:
     const int MISS_PENALTY = 80;
     const int SIZE_FACTOR = 1024;
 
     Cache(int cacheSize, int blockSize) {
-        this->size = cacheSize * Cache::SIZE_FACTOR;
-        this->blockSize = blockSize;
-        this->numBlocks = this->size / this->blockSize;
+        this->mSize = cacheSize * Cache::SIZE_FACTOR;
+        this->mBlockSize = blockSize;
+        this->numBlocks = this->mSize / this->mBlockSize;
         this->slots = new CacheSlot[this->numBlocks];
     }
 
@@ -122,6 +122,13 @@ public:
             << "miss rate " << missRate << std::endl;
     }
 
+    int size() {
+        return this->mSize;
+    }
+
+    int blockSize() {
+        return this->mBlockSize;
+    }
 };
 
 
