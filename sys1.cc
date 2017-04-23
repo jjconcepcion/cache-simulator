@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <unistd.h>
 
+const int DEFAULT_BLOCK_SIZE = 16;
+
 class AccessDetail {
 private:
     const static char READ = 'R';
@@ -38,12 +40,37 @@ public:
     }
 };
 
+class CacheSlot {
+public:
+    int valid;
+    int dirty;
+    uint32_t tag;
+};
+
+class Cache {
+private:
+    CacheSlot *slots = nullptr;
+public:
+    Cache(int numBlocks) {
+        slots = new CacheSlot[numBlocks];
+    }
+
+    ~Cache() {
+        delete [] slots;
+    }
+
+    const CacheSlot &operator[](int index) {
+        return slots[index];
+    }
+};
+
+
 void usage(char *baseName) {
     std::cerr << "Usage: " << baseName << " tracefile " << "cachesize ";
     std::cerr << "[-v ic1 ic2]" << std::endl;
 }
 
-void simulate(const char *traceFilePath) {
+void simulate(const char *traceFilePath, Cache &cache) {
     std::ifstream traceFile;
     AccessDetail access;
     std::string line;
@@ -62,7 +89,9 @@ void simulate(const char *traceFilePath) {
 int main(int argc, char *argv[]) {
     char *traceFilePath;
     bool vflag = false; // verbose mode flag
-    int cacheSize;
+    int blockSize = DEFAULT_BLOCK_SIZE;
+    int cacheSize, numBlocks;
+    Cache *cache = nullptr;
     int ic1, ic2;
     int option;
 
@@ -85,13 +114,17 @@ int main(int argc, char *argv[]) {
 
     traceFilePath = argv[optind];
     cacheSize = atoi(argv[optind + 1]);
+    numBlocks = cacheSize*1024/blockSize;
+    cache = new Cache(numBlocks);
 
     if (vflag) {
         ic1 = atoi(argv[optind + 2]);
         ic2 = atoi(argv[optind + 3]);
     }
 
-    simulate(traceFilePath);
+    simulate(traceFilePath, *cache);
+
+    delete cache;
 
     return 0;
 }
