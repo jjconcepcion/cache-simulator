@@ -47,10 +47,37 @@ public:
     uint32_t tag;
 };
 
+class CacheStatistics {
+public:
+    uint32_t reads;
+    uint32_t writes;
+    uint32_t readMisses;
+    uint32_t writeMisses;
+    uint32_t dirtyReadMisses;
+    uint32_t dirtyWriteMisses;
+    uint32_t bytesRead;
+    uint32_t bytesWritten;
+    uint32_t readAccessTime;
+    uint32_t writeAccessTime;
+
+    CacheStatistics() : reads(0),
+                        writes(0),
+                        readMisses(0),
+                        writeMisses(0),
+                        dirtyReadMisses(0),
+                        dirtyWriteMisses(0),
+                        bytesRead(0),
+                        bytesWritten(0),
+                        readAccessTime(0),
+                        writeAccessTime(0) {}
+};
+
 class Cache {
 private:
     CacheSlot *slots = nullptr;
+    CacheStatistics stats;
 public:
+    const int MISS_PENALTY = 80;
     Cache(int numBlocks) {
         slots = new CacheSlot[numBlocks];
     }
@@ -61,6 +88,30 @@ public:
 
     const CacheSlot &operator[](int index) {
         return slots[index];
+    }
+
+    void summary() {
+        int totalAccesses = stats.reads + stats.writes;
+        int totalMisses = stats.readMisses + stats.writeMisses;
+        int readTime = 0;
+        int writeTime = 0;
+        int totalTime = readTime + writeTime;
+        double missRate = static_cast<double>(totalMisses) / totalAccesses;
+
+        std::cout << "loads " << stats.reads
+            << " stores " << stats.writes
+            << " total " << totalAccesses << "\n" 
+            << "rmiss " << stats.readMisses
+            << " wmiss " << stats.writeMisses
+            << " total " << totalMisses << "\n"
+            << "dirty rmiss " << stats.dirtyReadMisses
+            << " dirty wmiss " << stats.dirtyWriteMisses << "\n"
+            << "bytes read " << stats.bytesRead
+            << " bytes written " << stats.bytesWritten << "\n"
+            << "read time " << readTime
+            << " write time " << writeTime
+            << " total time " << totalTime << "\n"
+            << "miss rate " << missRate << std::endl;
     }
 };
 
@@ -84,6 +135,8 @@ void simulate(const char *traceFilePath, Cache &cache) {
     while (std::getline(traceFile, line)) {
         access.parse(line);
     }
+
+    cache.summary();
 }
 
 int main(int argc, char *argv[]) {
