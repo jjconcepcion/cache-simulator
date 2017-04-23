@@ -27,6 +27,8 @@ public:
     char accessType;
     bool memRead;
     bool memWrite;
+    bool hit;
+    std::string caseNum;
 
     void parse(const std::string &line) {
         std::stringstream sstream(line);
@@ -118,7 +120,9 @@ public:
         int totalTime = readTime + writeTime;
         double missRate = static_cast<double>(totalMisses) / totalAccesses;
 
-        std::cout << "loads " << stats.reads
+        std::cout << "direct-mapped, writeback, size = "
+            << mSize/SIZE_FACTOR << "KB" << "\n"
+            << "loads " << stats.reads
             << " stores " << stats.writes
             << " total " << totalAccesses << "\n" 
             << "rmiss " << stats.readMisses
@@ -143,13 +147,31 @@ public:
     }
 };
 
+class VerboseOption {
+public:
+    bool flag;
+    uint32_t ic1;
+    uint32_t ic2;
+};
 
 void usage(char *baseName) {
     std::cerr << "Usage: " << baseName << " tracefile " << "cachesize ";
     std::cerr << "[-v ic1 ic2]" << std::endl;
 }
 
-void simulate(const char *traceFilePath, Cache &cache) {
+void printVerboseMsg(AccessDetail &access, Cache &cache) {
+    std::cout << access.order << " ";
+    std::cout.setf(std::ios::hex, std::ios::basefield);
+    std::cout << access.index << " "
+        << cache[access.index].valid << " "
+        << cache[access.index].tag << " "
+        << cache[access.index].dirty << " "
+        << access.hit << " ";
+    std::cout.unsetf(std::ios::hex);
+    std::cout << access.caseNum << std::endl;
+}
+
+void simulate(const char *traceFilePath, Cache &cache, VerboseOption &verbose) {
     std::ifstream traceFile;
     AccessDetail access;
     std::string line;
@@ -163,24 +185,29 @@ void simulate(const char *traceFilePath, Cache &cache) {
     while (std::getline(traceFile, line)) {
         access.parse(line);
         access.calculations(cache.size(), cache.blockSize());
+        if (verbose.flag && access.order >= verbose.ic1 
+                && access.order <= verbose.ic2) {
+            printVerboseMsg(access, cache);
+        }
     }
 
     cache.summary();
 }
 
+
+
 int main(int argc, char *argv[]) {
     char *traceFilePath;
-    bool vflag = false; // verbose mode flag
+    VerboseOption verbose = {false,0,0}; 
     int blockSize = DEFAULT_BLOCK_SIZE;
-    int cacheSize, numBlocks;
+    int cacheSize;
     Cache *cache = nullptr;
-    int ic1, ic2;
     int option;
 
     while ((option = getopt(argc, argv, "v")) != -1) {
         switch (option) {
         case 'v':
-            vflag = true;
+            verbose.flag = true;
             break;
         default:
             usage(argv[0]);
@@ -188,7 +215,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if ((!vflag && argc != optind + 2) || (vflag && argc != optind + 4)) {
+    if ((!verbose.flag && argc != optind + 2) ||
+            (verbose.flag && argc != optind + 4)) {
         std::cerr << "Incorrect number of arguments" << std::endl;
         usage(argv[0]);
         exit(1);
@@ -196,15 +224,14 @@ int main(int argc, char *argv[]) {
 
     traceFilePath = argv[optind];
     cacheSize = atoi(argv[optind + 1]);
-    numBlocks = cacheSize*1024/blockSize;
     cache = new Cache(cacheSize, blockSize);
 
-    if (vflag) {
-        ic1 = atoi(argv[optind + 2]);
-        ic2 = atoi(argv[optind + 3]);
+    if (verbose.flag) {
+        verbose.ic1 = atoi(argv[optind + 2]);
+        verbose.ic2 = atoi(argv[optind + 3]);
     }
 
-    simulate(traceFilePath, *cache);
+    simulate(traceFilePath, *cache, verbose);
 
     delete cache;
 
