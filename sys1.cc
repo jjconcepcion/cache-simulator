@@ -2,6 +2,7 @@
 #include <sstream>
 #include <fstream>
 #include <cstdlib>
+#include <cmath>
 #include <unistd.h>
 
 const int DEFAULT_BLOCK_SIZE = 16;
@@ -21,6 +22,8 @@ public:
     uint32_t instrAddress;
     uint32_t memAddress;
     uint32_t numOfBytes;
+    uint32_t index;
+    uint32_t tag;
     char accessType;
     bool memRead;
     bool memWrite;
@@ -37,6 +40,15 @@ public:
         this->memWrite = (this->accessType == WRITE);
         this->order = AccessDetail::accessOrder();
         AccessDetail::accessOrder()++;
+    }
+
+    void calculations(int cacheSize, int blockSize) {
+        int offsetBits = log2(blockSize);
+        int indexBits = log2(cacheSize/blockSize);
+        int lowOrderBits = indexBits + offsetBits;
+
+        this->tag = memAddress >> lowOrderBits;
+        this->index = (memAddress << (32 - lowOrderBits)) >> (32 -indexBits);
     }
 };
 
@@ -150,6 +162,7 @@ void simulate(const char *traceFilePath, Cache &cache) {
 
     while (std::getline(traceFile, line)) {
         access.parse(line);
+        access.calculations(cache.size(), cache.blockSize());
     }
 
     cache.summary();
