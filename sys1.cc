@@ -76,18 +76,26 @@ class Cache {
 private:
     CacheSlot *slots = nullptr;
     CacheStatistics stats;
+    int size;
+    int blockSize;
+    int numBlocks;
 public:
     const int MISS_PENALTY = 80;
-    Cache(int numBlocks) {
-        slots = new CacheSlot[numBlocks];
+    const int SIZE_FACTOR = 1024;
+
+    Cache(int cacheSize, int blockSize) {
+        this->size = cacheSize * Cache::SIZE_FACTOR;
+        this->blockSize = blockSize;
+        this->numBlocks = this->size / this->blockSize;
+        this->slots = new CacheSlot[this->numBlocks];
     }
 
     ~Cache() {
-        delete [] slots;
+        delete [] this->slots;
     }
 
     const CacheSlot &operator[](int index) {
-        return slots[index];
+        return this->slots[index];
     }
 
     void summary() {
@@ -113,6 +121,7 @@ public:
             << " total time " << totalTime << "\n"
             << "miss rate " << missRate << std::endl;
     }
+
 };
 
 
@@ -168,7 +177,7 @@ int main(int argc, char *argv[]) {
     traceFilePath = argv[optind];
     cacheSize = atoi(argv[optind + 1]);
     numBlocks = cacheSize*1024/blockSize;
-    cache = new Cache(numBlocks);
+    cache = new Cache(cacheSize, blockSize);
 
     if (vflag) {
         ic1 = atoi(argv[optind + 2]);
