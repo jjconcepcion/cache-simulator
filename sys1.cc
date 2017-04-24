@@ -90,14 +90,14 @@ public:
 
 class Cache {
 private:
-    CacheSlot *slots = nullptr;
+    CacheSlot *slots;
     CacheStatistics stats;
     int mSize;
     int mBlockSize;
     int numBlocks;
 public:
-    const int MISS_PENALTY = 80;
-    const int SIZE_FACTOR = 1024;
+    const static int MISS_PENALTY = 80;
+    const static int SIZE_FACTOR = 1024;
 
     Cache(int cacheSize, int blockSize) {
         this->mSize = cacheSize * Cache::SIZE_FACTOR;
