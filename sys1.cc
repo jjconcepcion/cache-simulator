@@ -189,7 +189,6 @@ void Cache::evaluate(AccessDetail &access) {
                 stats.writeAccessTime += cycles;
             }
         }
-        
     }
 }
 
@@ -206,11 +205,19 @@ void usage(char *baseName) {
 }
 
 void printVerboseMsg(AccessDetail &access, Cache &cache) {
+    uint32_t cacheTag;
+    
+    if (cache[access.index].valid) {
+        cacheTag = cache[access.index].tag;
+    } else {
+        cacheTag = 0;
+    }
     std::cout << access.order << " ";
     std::cout.setf(std::ios::hex, std::ios::basefield);
     std::cout << access.index << " "
+        << access.tag << " "
         << cache[access.index].valid << " "
-        << cache[access.index].tag << " "
+        << cacheTag << " "
         << cache[access.index].dirty << " "
         << access.hit << " ";
     std::cout.unsetf(std::ios::hex);
