@@ -128,8 +128,8 @@ public:
 void Cache::summary() {
     int totalAccesses = stats.reads + stats.writes;
     int totalMisses = stats.readMisses + stats.writeMisses;
-    int readTime = 0;
-    int writeTime = 0;
+    int readTime = stats.readAccessTime;
+    int writeTime = stats.writeAccessTime;
     int totalTime = readTime + writeTime;
     double missRate = static_cast<double>(totalMisses) / totalAccesses;
 
@@ -146,8 +146,8 @@ void Cache::summary() {
         << "bytes read " << stats.bytesRead
         << " bytes written " << stats.bytesWritten << "\n"
         << "read time " << readTime
-        << " write time " << writeTime
-        << " total time " << totalTime << "\n"
+        << " write time " << writeTime << "\n"
+        << "total time " << totalTime << "\n"
         << "miss rate " << missRate << std::endl;
 }
 
@@ -174,7 +174,7 @@ void Cache::evaluate(AccessDetail &access) {
         }
         access.caseNum = "1";
     } else {
-    //Case2a: clean cache miss, move block from memory into index
+        //Case2a: clean cache miss, move block from memory into index
         if (!entry.dirty) {
             entry.valid = 1;
             entry.tag = access.tag;
@@ -188,6 +188,25 @@ void Cache::evaluate(AccessDetail &access) {
                 stats.writeMisses++;
                 stats.writeAccessTime += cycles;
             }
+            access.caseNum = "2a";
+        } else {
+        //Case2b: dirty cache miss, write cache block to memory, move new
+        //block into index
+            entry.valid = 1;
+            entry.tag = access.tag;
+            cycles = 1 + 2*Cache::MISS_PENALTY;
+            if (access.memRead) {
+                entry.dirty = 0;
+                stats.readMisses++;
+                stats.dirtyReadMisses++;
+                stats.readAccessTime += cycles;
+            } else {
+                entry.dirty = 1;
+                stats.writeMisses++;
+                stats.dirtyWriteMisses++;
+                stats.writeAccessTime += cycles;
+            }
+            access.caseNum = "2b";
         }
     }
 }
