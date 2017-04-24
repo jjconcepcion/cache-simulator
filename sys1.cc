@@ -55,7 +55,7 @@ public:
 
     void calculations(int cacheSize, int blockSize) {
         int offsetBits = log2(blockSize);
-        int indexBits = log2(cacheSize/blockSize);
+        int indexBits = ceil(log2(cacheSize/blockSize));
         int lowOrderBits = indexBits + offsetBits;
 
         this->tag = memAddress >> lowOrderBits;
@@ -102,7 +102,8 @@ public:
     Cache(int cacheSize, int blockSize) {
         this->mSize = cacheSize * Cache::SIZE_FACTOR;
         this->mBlockSize = blockSize;
-        this->numBlocks = this->mSize / this->mBlockSize;
+        int logVal = ceil(log2(this->mSize/this->mBlockSize));
+        this->numBlocks = (1 << logVal);
         this->slots = new CacheSlot[this->numBlocks];
     }
 
@@ -278,7 +279,6 @@ int main(int argc, char *argv[]) {
     VerboseOption verbose = {false,0,0}; 
     int blockSize = DEFAULT_BLOCK_SIZE;
     int cacheSize;
-    Cache *cache = nullptr;
     int option;
 
     while ((option = getopt(argc, argv, "v")) != -1) {
@@ -301,16 +301,15 @@ int main(int argc, char *argv[]) {
 
     traceFilePath = argv[optind];
     cacheSize = atoi(argv[optind + 1]);
-    cache = new Cache(cacheSize, blockSize);
 
     if (verbose.flag) {
         verbose.ic1 = atoi(argv[optind + 2]);
         verbose.ic2 = atoi(argv[optind + 3]);
     }
 
-    simulate(traceFilePath, *cache, verbose);
+    Cache cache(cacheSize, blockSize);
+    simulate(traceFilePath, cache, verbose);
 
-    delete cache;
 
     return 0;
 }
