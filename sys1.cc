@@ -189,9 +189,11 @@ void Cache::evaluate(AccessDetail &access) {
                 entry.dirty = 0;
                 stats.readMisses++;
                 stats.readAccessTime += cycles;
+                stats.bytesRead += Cache::mBlockSize;
             } else {
                 entry.dirty = 1;
                 stats.writeMisses++;
+                stats.bytesRead += Cache::mBlockSize;
                 stats.writeAccessTime += cycles;
             }
             access.caseNum = "2a";
@@ -206,11 +208,15 @@ void Cache::evaluate(AccessDetail &access) {
                 stats.readMisses++;
                 stats.dirtyReadMisses++;
                 stats.readAccessTime += cycles;
+                stats.bytesWritten += Cache::mBlockSize;
+                stats.bytesRead += Cache::mBlockSize;
             } else {
                 entry.dirty = 1;
                 stats.writeMisses++;
                 stats.dirtyWriteMisses++;
                 stats.writeAccessTime += cycles;
+                stats.bytesWritten += Cache::mBlockSize;
+                stats.bytesRead += Cache::mBlockSize;
             }
             access.caseNum = "2b";
         }
