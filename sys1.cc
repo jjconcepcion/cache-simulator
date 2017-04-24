@@ -7,6 +7,13 @@
 
 const int DEFAULT_BLOCK_SIZE = 16;
 
+class CacheSlot {
+public:
+    int valid;
+    int dirty;
+    uint32_t tag;
+};
+
 class AccessDetail {
 private:
     const static char READ = 'R';
@@ -28,6 +35,8 @@ public:
     bool memRead;
     bool memWrite;
     bool hit;
+    CacheSlot prevState;
+
     std::string caseNum;
 
     void parse(const std::string &line) {
@@ -52,13 +61,6 @@ public:
         this->tag = memAddress >> lowOrderBits;
         this->index = (memAddress << (32 - lowOrderBits)) >> (32 -indexBits);
     }
-};
-
-class CacheSlot {
-public:
-    int valid;
-    int dirty;
-    uint32_t tag;
 };
 
 class CacheStatistics {
@@ -155,7 +157,11 @@ void Cache::evaluate(AccessDetail &access) {
     CacheSlot &entry = slots[access.index];
     uint32_t cycles;
 
+    // needed for verbose messages
     access.hit = entry.valid && entry.tag == access.tag;
+    access.prevState.valid = entry.valid;
+    access.prevState.dirty = entry.dirty;
+    access.prevState.tag = entry.tag;
 
     if (access.memRead) {
         stats.reads++;
@@ -223,21 +229,14 @@ void usage(char *baseName) {
     std::cerr << "[-v ic1 ic2]" << std::endl;
 }
 
-void printVerboseMsg(AccessDetail &access, Cache &cache) {
-    uint32_t cacheTag;
-    
-    if (cache[access.index].valid) {
-        cacheTag = cache[access.index].tag;
-    } else {
-        cacheTag = 0;
-    }
+void printVerboseMsg(AccessDetail &access) {
     std::cout << access.order << " ";
     std::cout.setf(std::ios::hex, std::ios::basefield);
     std::cout << access.index << " "
         << access.tag << " "
-        << cache[access.index].valid << " "
-        << cacheTag << " "
-        << cache[access.index].dirty << " "
+        << access.prevState.valid << " "
+        << (access.prevState.valid ? access.prevState.tag : 0) << " "
+        << access.prevState.dirty << " "
         << access.hit << " ";
     std::cout.unsetf(std::ios::hex);
     std::cout << access.caseNum << std::endl;
@@ -258,16 +257,15 @@ void simulate(const char *traceFilePath, Cache &cache, VerboseOption &verbose) {
         access.parse(line);
         access.calculations(cache.size(), cache.blockSize());
         cache.evaluate(access);
+
         if (verbose.flag && access.order >= verbose.ic1 
                 && access.order <= verbose.ic2) {
-            printVerboseMsg(access, cache);
+            printVerboseMsg(access);
         }
     }
 
     cache.summary();
 }
-
-
 
 int main(int argc, char *argv[]) {
     char *traceFilePath;
