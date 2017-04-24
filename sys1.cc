@@ -112,32 +112,6 @@ public:
         return this->slots[index];
     }
 
-    void summary() {
-        int totalAccesses = stats.reads + stats.writes;
-        int totalMisses = stats.readMisses + stats.writeMisses;
-        int readTime = 0;
-        int writeTime = 0;
-        int totalTime = readTime + writeTime;
-        double missRate = static_cast<double>(totalMisses) / totalAccesses;
-
-        std::cout << "direct-mapped, writeback, size = "
-            << mSize/SIZE_FACTOR << "KB" << "\n"
-            << "loads " << stats.reads
-            << " stores " << stats.writes
-            << " total " << totalAccesses << "\n" 
-            << "rmiss " << stats.readMisses
-            << " wmiss " << stats.writeMisses
-            << " total " << totalMisses << "\n"
-            << "dirty rmiss " << stats.dirtyReadMisses
-            << " dirty wmiss " << stats.dirtyWriteMisses << "\n"
-            << "bytes read " << stats.bytesRead
-            << " bytes written " << stats.bytesWritten << "\n"
-            << "read time " << readTime
-            << " write time " << writeTime
-            << " total time " << totalTime << "\n"
-            << "miss rate " << missRate << std::endl;
-    }
-
     int size() {
         return this->mSize;
     }
@@ -145,7 +119,79 @@ public:
     int blockSize() {
         return this->mBlockSize;
     }
+
+    void summary();
+    void evaluate(AccessDetail &access);
 };
+
+
+void Cache::summary() {
+    int totalAccesses = stats.reads + stats.writes;
+    int totalMisses = stats.readMisses + stats.writeMisses;
+    int readTime = 0;
+    int writeTime = 0;
+    int totalTime = readTime + writeTime;
+    double missRate = static_cast<double>(totalMisses) / totalAccesses;
+
+    std::cout << "direct-mapped, writeback, size = "
+        << mSize/SIZE_FACTOR << "KB" << "\n"
+        << "loads " << stats.reads
+        << " stores " << stats.writes
+        << " total " << totalAccesses << "\n" 
+        << "rmiss " << stats.readMisses
+        << " wmiss " << stats.writeMisses
+        << " total " << totalMisses << "\n"
+        << "dirty rmiss " << stats.dirtyReadMisses
+        << " dirty wmiss " << stats.dirtyWriteMisses << "\n"
+        << "bytes read " << stats.bytesRead
+        << " bytes written " << stats.bytesWritten << "\n"
+        << "read time " << readTime
+        << " write time " << writeTime
+        << " total time " << totalTime << "\n"
+        << "miss rate " << missRate << std::endl;
+}
+
+void Cache::evaluate(AccessDetail &access) {
+    CacheSlot &entry = slots[access.index];
+    uint32_t cycles;
+
+    access.hit = entry.valid && entry.tag == access.tag;
+
+    if (access.memRead) {
+        stats.reads++;
+    } else {
+        stats.writes++;
+    }
+    
+    // Case1: cache hit, 
+    if (access.hit) {
+        cycles = 1;
+        if (access.memRead)  {
+            stats.readAccessTime += cycles;
+        } else {
+            entry.dirty = 1;
+            stats.writeAccessTime += cycles;
+        }
+        access.caseNum = "1";
+    } else {
+    //Case2a: clean cache miss, move block from memory into index
+        if (!entry.dirty) {
+            entry.valid = 1;
+            entry.tag = access.tag;
+            cycles = 1 + Cache::MISS_PENALTY;
+            if (access.memRead) {
+                entry.dirty = 0;
+                stats.readMisses++;
+                stats.readAccessTime += cycles;
+            } else {
+                entry.dirty = 1;
+                stats.writeMisses++;
+                stats.writeAccessTime += cycles;
+            }
+        }
+        
+    }
+}
 
 class VerboseOption {
 public:
@@ -185,6 +231,7 @@ void simulate(const char *traceFilePath, Cache &cache, VerboseOption &verbose) {
     while (std::getline(traceFile, line)) {
         access.parse(line);
         access.calculations(cache.size(), cache.blockSize());
+        cache.evaluate(access);
         if (verbose.flag && access.order >= verbose.ic1 
                 && access.order <= verbose.ic2) {
             printVerboseMsg(access, cache);
