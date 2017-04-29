@@ -12,6 +12,8 @@ public:
     int valid;
     int dirty;
     uint32_t tag;
+    uint32_t lastUsed;
+    uint32_t blockId;
 };
 
 class AccessDetail {
@@ -95,15 +97,19 @@ private:
     int mSize;
     int mBlockSize;
     int numBlocks;
+    int associativity;
+    int assocBits;
 public:
     const static int MISS_PENALTY = 80;
     const static int SIZE_FACTOR = 1024;
 
-    Cache(int cacheSize, int blockSize) {
+    Cache(int cacheSize, int blockSize, int associativity) {
         this->mSize = cacheSize * Cache::SIZE_FACTOR;
         this->mBlockSize = blockSize;
         int logVal = ceil(log2(this->mSize/this->mBlockSize));
         this->numBlocks = (1 << logVal);
+        this->associativity = associativity;
+        this->assocBits = ceil(log2(this->associativity));
         this->slots = new CacheSlot[this->numBlocks];
     }
 
@@ -242,6 +248,8 @@ void printVerboseMsg(AccessDetail &access) {
     std::cout << access.index << " "
         << access.tag << " "
         << access.prevState.valid << " "
+        << access.prevState.blockId << " "
+        << access.prevState.lastUsed << " "
         << (access.prevState.valid ? access.prevState.tag : 0) << " "
         << access.prevState.dirty << " "
         << access.hit << " ";
@@ -309,9 +317,8 @@ int main(int argc, char *argv[]) {
         verbose.ic2 = atoi(argv[optind + 4]);
     }
 
-    Cache cache(cacheSize, blockSize);
+    Cache cache(cacheSize, blockSize, associativity);
     simulate(traceFilePath, cache, verbose);
-
 
     return 0;
 }
