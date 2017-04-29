@@ -271,6 +271,7 @@ void simulate(const char *traceFilePath, Cache &cache, VerboseOption &verbose) {
         }
     }
 
+    traceFile.close();
     cache.summary();
 }
 
