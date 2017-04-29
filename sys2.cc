@@ -58,12 +58,12 @@ public:
 
     void calculations(int cacheSize, int blockSize, int associativity) {
         int offsetBits = log2(blockSize);
-        int indexBits = ceil(log2(cacheSize/blockSize));
-        int lowOrderBits = indexBits + offsetBits;
         int assocBits = ceil(log2(associativity));
+        int indexBits = ceil(log2(cacheSize/blockSize)) - assocBits;
+        int lowOrderBits = indexBits + offsetBits;
 
         this->tag = memAddress >> lowOrderBits;
-        this->index = (memAddress << (32 - lowOrderBits)) >> (32 -indexBits);
+        this->index = (memAddress << (32 - lowOrderBits)) >> (32 - indexBits);
         this->setNumber = index >> assocBits;
     }
 };
