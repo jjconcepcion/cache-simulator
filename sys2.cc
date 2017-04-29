@@ -38,6 +38,7 @@ public:
     bool memWrite;
     bool hit;
     CacheSlot prevState;
+    uint32_t setNumber;
 
     std::string caseNum;
 
@@ -55,13 +56,15 @@ public:
         AccessDetail::accessOrder()++;
     }
 
-    void calculations(int cacheSize, int blockSize) {
+    void calculations(int cacheSize, int blockSize, int associativity) {
         int offsetBits = log2(blockSize);
         int indexBits = ceil(log2(cacheSize/blockSize));
         int lowOrderBits = indexBits + offsetBits;
+        int assocBits = ceil(log2(associativity));
 
         this->tag = memAddress >> lowOrderBits;
         this->index = (memAddress << (32 - lowOrderBits)) >> (32 -indexBits);
+        this->setNumber = index >> assocBits;
     }
 };
 
@@ -129,8 +132,13 @@ public:
         return this->mBlockSize;
     }
 
+    int assoc() {
+        return this->associativity;
+    }
+
     void summary();
     void evaluate(AccessDetail &access);
+    CacheSlot &block(AccessDetail &access);
 };
 
 
@@ -160,22 +168,65 @@ void Cache::summary() {
         << "miss rate " << missRate << std::endl;
 }
 
+// Returns matching block when cache hit, else returns next block to replace
+CacheSlot &Cache::block(AccessDetail &access) {
+    CacheSlot *block, *block0, *nextBlock, *leastUsed;
+    CacheSlot *emptyBlock = nullptr;
+    int blockId, assoc;
+
+    blockId = 0;
+    assoc = Cache::associativity;
+    block0 = &slots[assoc * access.setNumber + blockId];
+    block = leastUsed = block0;
+    if (!block0->valid) {
+        emptyBlock = block0;
+    }
+    /* Iterate through blocks in set until block matching access or
+     * blocks exhausted and replaceable block found
+     */
+    while (blockId < assoc) {
+        block->blockId = blockId;
+        if (block->valid && block->tag == access.tag) {
+            access.hit = true;
+            break;
+        } 
+        nextBlock = block + 1;
+        // find replaceable block: first empty block or least recently used
+        if (emptyBlock == nullptr) {
+            if (!nextBlock->valid) {
+                emptyBlock = nextBlock;
+            } else  if (nextBlock->lastUsed < leastUsed->lastUsed) {
+                leastUsed = nextBlock;
+            }
+        }
+        block = nextBlock;
+        blockId++;
+    }
+
+    // returning a block to replace
+    if (!access.hit) {
+        block = emptyBlock ? emptyBlock : leastUsed;
+    }
+
+    return *block;
+}
 void Cache::evaluate(AccessDetail &access) {
-    CacheSlot &entry = slots[access.index];
     uint32_t cycles;
 
+    access.hit = false;
+    CacheSlot &entry = Cache::block(access);
     // needed for verbose messages
-    access.hit = entry.valid && entry.tag == access.tag;
     access.prevState.valid = entry.valid;
     access.prevState.dirty = entry.dirty;
     access.prevState.tag = entry.tag;
+    access.prevState.lastUsed = entry.lastUsed;
 
     if (access.memRead) {
         stats.reads++;
     } else {
         stats.writes++;
     }
-    
+    entry.lastUsed = access.order;
     // Case1: cache hit, 
     if (access.hit) {
         cycles = 1;
@@ -270,7 +321,7 @@ void simulate(const char *traceFilePath, Cache &cache, VerboseOption &verbose) {
 
     while (std::getline(traceFile, line)) {
         access.parse(line);
-        access.calculations(cache.size(), cache.blockSize());
+        access.calculations(cache.size(), cache.blockSize(), cache.assoc());
         cache.evaluate(access);
 
         if (verbose.flag && access.order >= verbose.ic1 
