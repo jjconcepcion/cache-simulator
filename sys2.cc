@@ -150,7 +150,7 @@ void Cache::summary() {
     int totalTime = readTime + writeTime;
     double missRate = static_cast<double>(totalMisses) / totalAccesses;
 
-    std::cout << "direct-mapped, writeback, size = "
+    std::cout << Cache::associativity << "-way, writeback, size = "
         << mSize/SIZE_FACTOR << "KB" << "\n"
         << "loads " << stats.reads
         << " stores " << stats.writes
