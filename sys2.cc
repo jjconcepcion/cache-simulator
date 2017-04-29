@@ -219,6 +219,7 @@ void Cache::evaluate(AccessDetail &access) {
     access.prevState.valid = entry.valid;
     access.prevState.dirty = entry.dirty;
     access.prevState.tag = entry.tag;
+    access.prevState.blockId = entry.blockId;
     access.prevState.lastUsed = entry.lastUsed;
 
     if (access.memRead) {
