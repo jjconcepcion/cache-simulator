@@ -14,6 +14,8 @@ public:
     uint32_t tag;
     uint32_t lastUsed;
     uint32_t blockId;
+
+    CacheSlot() : valid(0), dirty(0), tag(0), lastUsed(0), blockId(0) {}
 };
 
 class AccessDetail {
