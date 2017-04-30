@@ -168,7 +168,7 @@ void Cache::summary() {
 // Returns matching block when cache hit, else returns next block to replace
 CacheSlot &Cache::block(AccessDetail &access) {
     CacheSlot *block, *retBlock, *leastUsed;
-    CacheSlot *emptyBlock = nullptr;
+    CacheSlot *emptyBlock = NULL;
 
     int assoc = Cache::associativity;
       /* Iterate through blocks in set until block matching access or
@@ -182,9 +182,9 @@ CacheSlot &Cache::block(AccessDetail &access) {
             break;
         }
 
-        if (!block->valid && emptyBlock == nullptr) {
+        if (!block->valid && emptyBlock == NULL) {
             emptyBlock = block;
-        } else if (leastUsed == nullptr) {
+        } else if (leastUsed == NULL) {
             leastUsed = block;
         } else if (block->lastUsed < leastUsed->lastUsed) {
             leastUsed = block;
@@ -194,7 +194,7 @@ CacheSlot &Cache::block(AccessDetail &access) {
     if (access.hit) {
         retBlock = block;
     } else  {
-        retBlock = emptyBlock != nullptr ? emptyBlock : leastUsed;
+        retBlock = emptyBlock != NULL ? emptyBlock : leastUsed;
     }
 
     return *retBlock;
