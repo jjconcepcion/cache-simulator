@@ -169,7 +169,8 @@ void Cache::summary() {
 
 // Returns matching block when cache hit, else returns next block to replace
 CacheSlot &Cache::block(AccessDetail &access) {
-    CacheSlot *block, *retBlock, *leastUsed;
+    CacheSlot *block, *retBlock;
+    CacheSlot *leastUsed = NULL;
     CacheSlot *emptyBlock = NULL;
 
     int assoc = Cache::associativity;
