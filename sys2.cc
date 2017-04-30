@@ -38,8 +38,6 @@ public:
     bool memWrite;
     bool hit;
     CacheSlot prevState;
-    uint32_t setNumber;
-
     std::string caseNum;
 
     void parse(const std::string &line) {
@@ -64,7 +62,6 @@ public:
 
         this->tag = memAddress >> lowOrderBits;
         this->index = (memAddress << (32 - lowOrderBits)) >> (32 - indexBits);
-        this->setNumber = index >> assocBits;
     }
 };
 
@@ -170,45 +167,37 @@ void Cache::summary() {
 
 // Returns matching block when cache hit, else returns next block to replace
 CacheSlot &Cache::block(AccessDetail &access) {
-    CacheSlot *block, *block0, *nextBlock, *leastUsed;
+    CacheSlot *block, *retBlock, *leastUsed;
     CacheSlot *emptyBlock = nullptr;
-    int blockId, assoc;
 
-    blockId = 0;
-    assoc = Cache::associativity;
-    block0 = &slots[assoc * access.setNumber + blockId];
-    block = leastUsed = block0;
-    if (!block0->valid) {
-        emptyBlock = block0;
-    }
-    /* Iterate through blocks in set until block matching access or
+    int assoc = Cache::associativity;
+      /* Iterate through blocks in set until block matching access or
      * blocks exhausted and replaceable block found
      */
-    while (blockId < assoc) {
-        block->blockId = blockId;
+    for (int bid = 0; bid < assoc; bid++) {
+        block = &slots[assoc * access.index + bid];
+        block->blockId = bid;
         if (block->valid && block->tag == access.tag) {
             access.hit = true;
             break;
-        } 
-        nextBlock = block + 1;
-        // find replaceable block: first empty block or least recently used
-        if (emptyBlock == nullptr) {
-            if (!nextBlock->valid) {
-                emptyBlock = nextBlock;
-            } else  if (nextBlock->lastUsed < leastUsed->lastUsed) {
-                leastUsed = nextBlock;
-            }
         }
-        block = nextBlock;
-        blockId++;
+
+        if (!block->valid && emptyBlock == nullptr) {
+            emptyBlock = block;
+        } else if (leastUsed == nullptr) {
+            leastUsed = block;
+        } else if (block->lastUsed < leastUsed->lastUsed) {
+            leastUsed = block;
+        }
     }
 
-    // returning a block to replace
-    if (!access.hit) {
-        block = emptyBlock ? emptyBlock : leastUsed;
+    if (access.hit) {
+        retBlock = block;
+    } else  {
+        retBlock = emptyBlock != nullptr ? emptyBlock : leastUsed;
     }
 
-    return *block;
+    return *retBlock;
 }
 void Cache::evaluate(AccessDetail &access) {
     uint32_t cycles;
@@ -298,14 +287,16 @@ void printVerboseMsg(AccessDetail &access) {
     std::cout << access.order << " ";
     std::cout.setf(std::ios::hex, std::ios::basefield);
     std::cout << access.index << " "
-        << access.tag << " "
-        << access.prevState.valid << " "
-        << access.prevState.blockId << " "
-        << access.prevState.lastUsed << " "
-        << (access.prevState.valid ? access.prevState.tag : 0) << " "
-        << access.prevState.dirty << " "
-        << access.hit << " ";
+        << access.tag << " ";
     std::cout.unsetf(std::ios::hex);
+    std::cout << access.prevState.valid << " "
+        << access.prevState.blockId << " "
+        << access.prevState.lastUsed << " ";
+    std::cout.setf(std::ios::hex, std::ios::basefield);
+    std::cout << (access.prevState.valid ? access.prevState.tag : 0) << " ";
+    std::cout.unsetf(std::ios::hex);
+    std::cout << access.prevState.dirty << " "
+        << access.hit << " ";
     std::cout << access.caseNum << std::endl;
 }
 
